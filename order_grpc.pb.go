@@ -8,7 +8,6 @@ package order
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -27,8 +26,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type OrderServiceClient interface {
-	// Server-side streaming для отслеживания статуса
-	SubscribeToOrderUpdates(ctx context.Context, in *OrderRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrderStatusUpdate], error)
+	SubscribeToOrderUpdates(ctx context.Context, in *OrderSubscriptionRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrderStatusUpdate], error)
 }
 
 type orderServiceClient struct {
@@ -39,13 +37,13 @@ func NewOrderServiceClient(cc grpc.ClientConnInterface) OrderServiceClient {
 	return &orderServiceClient{cc}
 }
 
-func (c *orderServiceClient) SubscribeToOrderUpdates(ctx context.Context, in *OrderRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrderStatusUpdate], error) {
+func (c *orderServiceClient) SubscribeToOrderUpdates(ctx context.Context, in *OrderSubscriptionRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrderStatusUpdate], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &OrderService_ServiceDesc.Streams[0], OrderService_SubscribeToOrderUpdates_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[OrderRequest, OrderStatusUpdate]{ClientStream: stream}
+	x := &grpc.GenericClientStream[OrderSubscriptionRequest, OrderStatusUpdate]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -62,8 +60,7 @@ type OrderService_SubscribeToOrderUpdatesClient = grpc.ServerStreamingClient[Ord
 // All implementations must embed UnimplementedOrderServiceServer
 // for forward compatibility.
 type OrderServiceServer interface {
-	// Server-side streaming для отслеживания статуса
-	SubscribeToOrderUpdates(*OrderRequest, grpc.ServerStreamingServer[OrderStatusUpdate]) error
+	SubscribeToOrderUpdates(*OrderSubscriptionRequest, grpc.ServerStreamingServer[OrderStatusUpdate]) error
 	mustEmbedUnimplementedOrderServiceServer()
 }
 
@@ -74,7 +71,7 @@ type OrderServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedOrderServiceServer struct{}
 
-func (UnimplementedOrderServiceServer) SubscribeToOrderUpdates(*OrderRequest, grpc.ServerStreamingServer[OrderStatusUpdate]) error {
+func (UnimplementedOrderServiceServer) SubscribeToOrderUpdates(*OrderSubscriptionRequest, grpc.ServerStreamingServer[OrderStatusUpdate]) error {
 	return status.Error(codes.Unimplemented, "method SubscribeToOrderUpdates not implemented")
 }
 func (UnimplementedOrderServiceServer) mustEmbedUnimplementedOrderServiceServer() {}
@@ -99,11 +96,11 @@ func RegisterOrderServiceServer(s grpc.ServiceRegistrar, srv OrderServiceServer)
 }
 
 func _OrderService_SubscribeToOrderUpdates_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(OrderRequest)
+	m := new(OrderSubscriptionRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(OrderServiceServer).SubscribeToOrderUpdates(m, &grpc.GenericServerStream[OrderRequest, OrderStatusUpdate]{ServerStream: stream})
+	return srv.(OrderServiceServer).SubscribeToOrderUpdates(m, &grpc.GenericServerStream[OrderSubscriptionRequest, OrderStatusUpdate]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
